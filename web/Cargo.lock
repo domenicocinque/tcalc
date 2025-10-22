@@ -15,39 +15,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
-name = "cli"
-version = "0.1.0"
-dependencies = [
- "tcalc_core",
-]
-
-[[package]]
-name = "console_error_panic_hook"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a06aeb73f470f66dcdbf7223caeebb85984942f22f1adb2a088cf9668146bbbc"
-dependencies = [
- "cfg-if",
- "wasm-bindgen",
-]
-
-[[package]]
 name = "deranged"
 version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a41953f86f8a05768a6cda24def994fd2f424b04ec5c719cf89989779f199071"
 dependencies = [
  "powerfmt",
-]
-
-[[package]]
-name = "js-sys"
-version = "0.3.81"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec48937a97411dcb524a265206ccd4c90bb711fca92b2792c407f268825b9305"
-dependencies = [
- "once_cell",
- "wasm-bindgen",
 ]
 
 [[package]]
@@ -153,7 +126,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "91e7d9e3bb61134e77bde20dd4825b97c010155709965fedf0f49bb138e52a9d"
 dependencies = [
  "deranged",
- "js-sys",
  "num-conv",
  "powerfmt",
  "serde",
@@ -241,7 +213,6 @@ dependencies = [
 name = "web"
 version = "0.1.0"
 dependencies = [
- "console_error_panic_hook",
  "tcalc_core",
  "wasm-bindgen",
 ]
