@@ -152,11 +152,73 @@ impl Value {
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Value::Date(d) => d.fmt(f),
-            Value::DateTime(dt) => dt.fmt(f),
+            Value::Date(d) => write_date(f, *d),
+            Value::DateTime(dt) => write_datetime(f, *dt),
             Value::Duration(dur) => dur.fmt(f),
-            Value::Time(t) => t.fmt(f),
+            Value::Time(t) => write_time(f, *t),
         }
+    }
+}
+
+fn write_date(f: &mut fmt::Formatter, date: Date) -> fmt::Result {
+    write!(
+        f,
+        "{:04}-{:02}-{:02}",
+        date.year(),
+        date.month() as u8,
+        date.day()
+    )
+}
+
+fn write_time(f: &mut fmt::Formatter, time: Time) -> fmt::Result {
+    write!(f, "{:02}:{:02}", time.hour(), time.minute())?;
+
+    let second = time.second();
+    let nanosecond = time.nanosecond();
+
+    if second != 0 || nanosecond != 0 {
+        write!(f, ":{:02}", second)?;
+
+        if nanosecond != 0 {
+            let mut subseconds = format!("{:09}", nanosecond);
+            while subseconds.ends_with('0') {
+                subseconds.pop();
+            }
+            write!(f, ".{}", subseconds)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn write_datetime(f: &mut fmt::Formatter, datetime: OffsetDateTime) -> fmt::Result {
+    write_date(f, datetime.date())?;
+    write!(f, " ")?;
+    write_time(f, datetime.time())?;
+
+    let offset = datetime.offset();
+    if offset.whole_seconds() != 0 {
+        write!(f, " {}", format_offset(offset))?;
+    } else {
+        write!(f, " +00:00")?;
+    }
+
+    Ok(())
+}
+
+fn format_offset(offset: UtcOffset) -> String {
+    let total_seconds = offset.whole_seconds();
+    let sign = if total_seconds >= 0 { '+' } else { '-' };
+    let total_seconds = total_seconds.abs();
+
+    let hours = total_seconds / 3600;
+    let minutes = (total_seconds % 3600) / 60;
+    let seconds = total_seconds % 60;
+
+    if seconds == 0 {
+        format!("{}{:02}:{:02}", sign, hours, minutes)
+    } else {
+        format!("{}{:02}:{:02}:{:02}", sign, hours, minutes, seconds)
     }
 }
 
@@ -185,7 +247,7 @@ pub fn eval(expr: &Expr) -> Result<Value, EvalError> {
 mod tests {
     use super::*;
     use crate::parser::{Expr, Op};
-    use time::{Date, Duration, Month, Time};
+    use time::{Date, Duration, Month, OffsetDateTime, Time, UtcOffset};
 
     #[test]
     fn test_literal_date() {
@@ -273,5 +335,46 @@ mod tests {
         );
         let val = eval(&expr);
         assert!(val.is_err());
+    }
+
+    #[test]
+    fn test_display_date_formats_consistently() {
+        let date = Date::from_calendar_date(2024, Month::January, 5).unwrap();
+        assert_eq!(Value::Date(date).to_string(), "2024-01-05");
+    }
+
+    #[test]
+    fn test_display_time_omits_seconds_when_zero() {
+        let time = Time::from_hms(2, 0, 0).unwrap();
+        assert_eq!(Value::Time(time).to_string(), "02:00");
+    }
+
+    #[test]
+    fn test_display_time_includes_seconds() {
+        let time = Time::from_hms(2, 0, 30).unwrap();
+        assert_eq!(Value::Time(time).to_string(), "02:00:30");
+    }
+
+    #[test]
+    fn test_display_time_includes_fractional_seconds() {
+        let time = Time::from_hms_nano(2, 0, 30, 120_000_000).unwrap();
+        assert_eq!(Value::Time(time).to_string(), "02:00:30.12");
+    }
+
+    #[test]
+    fn test_display_datetime_utc_offset() {
+        let date = Date::from_calendar_date(2024, Month::January, 5).unwrap();
+        let time = Time::from_hms(8, 15, 0).unwrap();
+        let dt = OffsetDateTime::new_in_offset(date, time, UtcOffset::UTC);
+        assert_eq!(Value::DateTime(dt).to_string(), "2024-01-05 08:15 +00:00");
+    }
+
+    #[test]
+    fn test_display_datetime_nonzero_offset() {
+        let date = Date::from_calendar_date(2024, Month::January, 5).unwrap();
+        let time = Time::from_hms(8, 15, 0).unwrap();
+        let offset = UtcOffset::from_hms(5, 30, 0).unwrap();
+        let dt = OffsetDateTime::new_in_offset(date, time, offset);
+        assert_eq!(Value::DateTime(dt).to_string(), "2024-01-05 08:15 +05:30");
     }
 }
