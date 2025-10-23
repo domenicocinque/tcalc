@@ -27,6 +27,7 @@ impl std::fmt::Display for Token {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct Lexer<'s> {
     s: Scanner<'s>,
 }

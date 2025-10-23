@@ -39,6 +39,7 @@ pub enum Keyword {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Unit {
+    Years,
     Months,
     Days,
     Hours,
@@ -51,6 +52,7 @@ impl TryFrom<&str> for Unit {
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
+            "years" | "year" | "y" => Ok(Unit::Years),
             "months" | "month" => Ok(Unit::Months),
             "days" | "day" | "d" => Ok(Unit::Days),
             "hours" | "hour" | "h" => Ok(Unit::Hours),

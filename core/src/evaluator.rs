@@ -5,6 +5,7 @@ use std::fmt;
 use time::{Date, Duration, Month, OffsetDateTime, Time, UtcOffset};
 
 const DAYS_PER_MONTH_APPROX: i64 = 30;
+const DAYS_PER_YEAR_APPROX: i64 = 365;
 
 #[derive(Debug)]
 pub enum EvalError {
@@ -68,6 +69,7 @@ impl Value {
 
     fn from_duration(value: i64, unit: &Unit) -> Result<Self, EvalError> {
         let duration = match unit {
+            Unit::Years => Duration::days(value * DAYS_PER_YEAR_APPROX),
             Unit::Months => Duration::days(value * DAYS_PER_MONTH_APPROX),
             Unit::Days => Duration::days(value),
             Unit::Hours => Duration::hours(value),
