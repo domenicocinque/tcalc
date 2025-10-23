@@ -1,18 +1,25 @@
-use std::env;
-
 use tcalc_core::run;
 
-fn main() {
-    let args: Vec<String> = env::args().collect();
-    if args.len() < 2 {
-        eprintln!("Usage: tcalc <expression>");
-        std::process::exit(1);
-    }
+use clap::Parser;
 
-    match run(&args[1]) {
-        Ok(result) => {
-            println!("{}", result)
-        }
+#[derive(Parser)]
+#[command(name = "tcalc", author, version, about, long_about = None)]
+struct Cli {
+    #[arg(required = true, value_name = "EXPRESSION")]
+    expression: Vec<String>,
+}
+
+pub fn exec() -> Result<(), String> {
+    let cli = Cli::parse();
+    let expression = cli.expression.join(" ");
+    let result = run(&expression)?;
+    println!("{}", result);
+    Ok(())
+}
+
+fn main() {
+    match exec() {
+        Ok(()) => {}
         Err(err) => {
             eprintln!("error: {}", err);
             std::process::exit(1);
