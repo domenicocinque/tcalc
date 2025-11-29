@@ -130,11 +130,12 @@ impl Value {
 
     fn sub(self, other: Value) -> Result<Value, EvalError> {
         match (self, other) {
+            (Value::Date(left), Value::Date(right)) => Ok(Value::Duration(left - right)),
             (Value::Date(left), Value::Duration(right)) => Ok(Value::Date(left - right)),
+            (Value::Duration(left), Value::Duration(right)) => Ok(Value::Duration(left - right)),
             (Value::DateTime(left), Value::Duration(right)) => Ok(Value::DateTime(left - right)),
             (Value::Time(left), Value::Duration(right)) => Ok(Value::Time(left - right)),
-            (Value::Duration(left), Value::Duration(right)) => Ok(Value::Duration(left - right)),
-            (Value::Date(left), Value::Date(right)) => Ok(Value::Duration(left - right)),
+            (Value::Time(left), Value::Time(right)) => Ok(Value::Duration(left - right)),
             _ => Err(EvalError::InvalidOp(Op::Sub, self, other)),
         }
     }
@@ -247,7 +248,6 @@ pub fn eval(expr: &Expr) -> Result<Value, EvalError> {
 mod tests {
     use super::*;
     use crate::parser::{Expr, Op};
-    use time::{Date, Duration, Month, OffsetDateTime, Time, UtcOffset};
 
     #[test]
     fn test_literal_date() {
@@ -313,6 +313,17 @@ mod tests {
                 Date::from_calendar_date(2025, Month::September, 20).unwrap()
             ),
             _ => panic!("Expected Value::Date"),
+        }
+    }
+
+    #[test]
+    fn test_sub_time_time() {
+        let expr = Expr::BinOp(Box::new(Expr::Time(18, 0)), Op::Sub, Box::new(Expr::Time(9,0)));
+        let val = eval(&expr).unwrap();
+
+        match val {
+            Value::Duration(dur) => assert_eq!(dur, Duration::hours(9)),
+            _ => panic!("Expected Expr"),
         }
     }
 
