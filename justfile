@@ -2,5 +2,7 @@ cli *ARGS:
     cargo run -p cli {{ ARGS }}
 
 web:
-    cd web && wasm-pack build --target web --out-dir pkga
-    npx serve web/pkg
+    cd web && wasm-pack build --target web --out-dir pkg && cp index.html pkg/
+    cd web/pkg && npx serve
+
+

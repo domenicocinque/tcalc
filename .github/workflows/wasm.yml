@@ -2,13 +2,12 @@ name: WASM Build
 
 on:
   push:
-    branches: [main]
-
-permissions:
-  contents: write
+    branches:
+      - main
 
 jobs:
   build-latest:
+    name: WASM on Latest
     runs-on: ubuntu-latest
 
     steps:
@@ -17,20 +16,19 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+          profile: minimal
           override: true
 
       - uses: jetli/wasm-pack-action@v0.3.0
 
-      - name: Build WASM package
+      - name: Build WASM
         run: |
-          cd web
-          wasm-pack build --target web --out-dir pkg
-          touch pkg/.nojekyll
+          cd web && wasm-pack build --target web --out-dir pkg && cp index.html pkg/ && rm pkg/.gitignore
 
-      - name: Deploy to GitHub Pages
+      - name: Deploy 
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: gh-pages
           folder: web/pkg
-          single-commit: true
           clean: true
+          single-commit: true
