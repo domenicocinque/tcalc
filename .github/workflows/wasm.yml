@@ -1,0 +1,41 @@
+name: WASM Build
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-latest:
+    name: WASM on Latest
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: Install wasm target
+        run: rustup target add wasm32-unknown-unknown
+
+      - uses: jetli/wasm-pack-action@v0.3.0
+
+      - name: Build web package
+        run: wasm-pack build web --release --target web --out-dir pkg
+
+      - name: Prepare static artifacts
+        run: touch web/pkg/.nojekyll
+
+      - name: Deploy
+        uses: JamesIves/github-pages-deploy-action@v4.7.4
+        with:
+          branch: gh-pages
+          folder: web/pkg
+          single-commit: true
+          clean: true
