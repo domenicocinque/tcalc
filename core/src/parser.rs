@@ -258,6 +258,32 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_time_12am() {
+        let lexer = Lexer::new("12am");
+        let expr = parse(lexer).unwrap();
+        assert_eq!(expr, Expr::Time(0, 0));
+    }
+
+    #[test]
+    fn test_parse_time_12pm() {
+        let lexer = Lexer::new("12pm");
+        let expr = parse(lexer).unwrap();
+        assert_eq!(expr, Expr::Time(12, 0));
+    }
+
+    #[test]
+    fn test_parse_time_invalid_hour_overflow() {
+        let lexer = Lexer::new("34pm");
+        assert!(parse(lexer).is_err());
+    }
+
+    #[test]
+    fn test_parse_time_invalid_hour_zero() {
+        let lexer = Lexer::new("0am");
+        assert!(parse(lexer).is_err());
+    }
+
+    #[test]
     fn test_parse_duration_hours() {
         let lexer = Lexer::new("2h");
         let expr = parse(lexer).unwrap();
