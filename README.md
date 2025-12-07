@@ -1,7 +1,7 @@
 <h2> <em><span style="color:#c52700">t</span>calc </em> </h2>
 
 A CLI for time arithmetic. Inspired by [when](https://github.com/mitsuhiko/when/tree/main).
-Try it [online](https://domenicocinque.github.io/posts/tcalc/).
+Try it [online](https://domenicocinque.github.io/tcalc/).
 
 **Examples:**
 
