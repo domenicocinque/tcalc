@@ -75,6 +75,7 @@ pub enum ParsingError {
     ExpectedColon,
     ExpectedUnit,
     InvalidYear(i64),
+    InvalidTime(String),
 }
 
 impl std::fmt::Display for ParsingError {
@@ -90,6 +91,7 @@ impl std::fmt::Display for ParsingError {
             ParsingError::ExpectedColon => write!(f, "expected colon"),
             ParsingError::ExpectedUnit => write!(f, "expected unit"),
             ParsingError::InvalidYear(year) => write!(f, "invalid year '{}'", year),
+            ParsingError::InvalidTime(time_string) => write!(f, "invalid time '{}'", time_string),
         }
     }
 }
@@ -157,11 +159,19 @@ fn parse_number(tokens: &mut Peekable<Lexer>) -> Result<Expr, ParsingError> {
         Some(Token::Ident(ident)) => match ident.as_str() {
             "am" => {
                 tokens.next();
-                Ok(Expr::Time(first_num as u8, 0))
+                match first_num {
+                    1..=11 => return Ok(Expr::Time(first_num as u8, 0)),
+                    12 => return Ok(Expr::Time(0, 0)),
+                    _ => return Err(ParsingError::InvalidTime(format!("{first_num} am"))),
+                }
             }
             "pm" => {
                 tokens.next();
-                Ok(Expr::Time((first_num + HOURS_IN_HALF_DAY) as u8, 0))
+                match first_num {
+                    1..=11 => return Ok(Expr::Time((first_num + HOURS_IN_HALF_DAY) as u8, 0)),
+                    12 => return Ok(Expr::Time(12, 0)),
+                    _ => return Err(ParsingError::InvalidTime(format!("{first_num} pm"))),
+                }
             }
             _ => parse_duration(tokens, first_num),
         },
@@ -176,7 +186,6 @@ fn parse_date(tokens: &mut Peekable<Lexer>, year: i64) -> Result<Expr, ParsingEr
     expect_token(tokens, Token::Slash, ParsingError::ExpectedSlash)?;
     let day = expect_number(tokens)?;
 
-    // Optional time part
     if let Some(Token::Number(_)) = tokens.peek() {
         let hour = expect_number(tokens)?;
         expect_token(tokens, Token::Colon, ParsingError::ExpectedColon)?;
