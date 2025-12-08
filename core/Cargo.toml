@@ -2,6 +2,8 @@
 name = "tcalc_core"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+description = "Core library for tcalc-cli crate."
 
 [dependencies]
 time = { version = "0.3", features = ["wasm-bindgen"] }

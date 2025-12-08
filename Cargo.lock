@@ -105,28 +105,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a1d728cc89cf3aee9ff92b05e62b19ee65a02b5702cff7d5a377e32c6ae29d8d"
 
 [[package]]
-name = "cli"
-version = "0.1.0"
-dependencies = [
- "clap",
- "tcalc_core",
-]
-
-[[package]]
 name = "colorchoice"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b05b61dc5112cbb17e4b6cd61790d9845d13888356391624cbe7e41efeac1e75"
-
-[[package]]
-name = "console_error_panic_hook"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a06aeb73f470f66dcdbf7223caeebb85984942f22f1adb2a088cf9668146bbbc"
-dependencies = [
- "cfg-if",
- "wasm-bindgen",
-]
 
 [[package]]
 name = "deranged"
@@ -260,6 +242,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "tcalc-cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "tcalc_core",
+]
+
+[[package]]
 name = "tcalc_core"
 version = "0.1.0"
 dependencies = [
@@ -362,15 +352,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bad67dc8b2a1a6e5448428adec4c3e84c43e561d8c9ee8a9e5aabeb193ec41d1"
 dependencies = [
  "unicode-ident",
-]
-
-[[package]]
-name = "web"
-version = "0.1.0"
-dependencies = [
- "console_error_panic_hook",
- "tcalc_core",
- "wasm-bindgen",
 ]
 
 [[package]]
