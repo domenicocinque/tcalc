@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1](https://github.com/domenicocinque/tcalc/compare/tcalc-cli-v0.1.0...tcalc-cli-v0.1.1) - 2025-12-08
+
+### Other
+
+- copy readme to cli and core
+
 ## [0.1.0](https://github.com/domenicocinque/tcalc/releases/tag/tcalc-cli-v0.1.0) - 2025-12-08
 
 ### Fixed
