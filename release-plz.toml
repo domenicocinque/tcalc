@@ -1,0 +1,9 @@
+[workspace]
+git_release_enable = false
+dependencies_update = true 
+
+[[package]] 
+name = "tcalc-cli" 
+changelog_include = ["tcalc_core"]
+changelog_path = "./CHANGELOG.md"
+git_release_enable = true 

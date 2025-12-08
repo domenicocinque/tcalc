@@ -4,6 +4,7 @@ version = "0.1.1"
 edition = "2024"
 license = "MIT"
 description = "Core library for tcalc-cli crate."
+readme = "../README.md"
 
 [dependencies]
 time = { version = "0.3", features = ["wasm-bindgen"] }
