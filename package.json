@@ -1,0 +1,15 @@
+{
+  "name": "tcalc-web",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "tcalc_web_bg.wasm",
+    "tcalc_web.js",
+    "tcalc_web.d.ts"
+  ],
+  "main": "tcalc_web.js",
+  "types": "tcalc_web.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
