@@ -111,7 +111,13 @@ impl std::error::Error for ParsingError {}
 /// <time> ::= NUMBER ':' NUMBER | NUMBER ("am" | "pm")
 pub fn parse(lexer: Lexer) -> Result<Expr, ParsingError> {
     let mut tokens = lexer.into_iter().peekable();
-    parse_expr(&mut tokens)
+    let expr = parse_expr(&mut tokens)?;
+
+    match tokens.next() {
+        Some(Token::Eof) => Ok(expr),
+        Some(token) => Err(ParsingError::UnexpectedToken(token)),
+        None => Err(ParsingError::UnexpectedEof),
+    }
 }
 
 fn parse_expr(tokens: &mut Peekable<Lexer>) -> Result<Expr, ParsingError> {
@@ -295,6 +301,12 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_date_rejects_trailing_ident() {
+        let lexer = Lexer::new("2023/01/01foo");
+        assert!(parse(lexer).is_err());
+    }
+
+    #[test]
     fn test_parse_time_24h() {
         let lexer = Lexer::new("14:30");
         let expr = parse(lexer).unwrap();
@@ -310,6 +322,12 @@ mod tests {
     #[test]
     fn test_parse_time_rejects_minute_overflow() {
         let lexer = Lexer::new("14:257");
+        assert!(parse(lexer).is_err());
+    }
+
+    #[test]
+    fn test_parse_time_rejects_trailing_ident() {
+        let lexer = Lexer::new("14:30pm");
         assert!(parse(lexer).is_err());
     }
 
