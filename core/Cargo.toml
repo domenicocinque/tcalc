@@ -9,6 +9,7 @@ readme = "../README.md"
 
 [dependencies]
 time = { version = "0.3", features = ["wasm-bindgen"] }
+toml = "0.8"
 unscanny = "0.1.0"
 
 [dev-dependencies]

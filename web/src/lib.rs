@@ -9,7 +9,7 @@ pub fn init_panic_hook() {
 
 #[wasm_bindgen]
 pub fn run_web(input: String) -> String {
-    match run(&input) {
+    match run(&input, None) {
         Ok(result) => result,
         Err(e) => format!("Error: {}", e),
     }

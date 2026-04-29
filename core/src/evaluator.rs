@@ -1,6 +1,7 @@
 use crate::parser::{Expr, Op};
 use crate::parser::{Keyword, Unit};
 
+use std::collections::HashSet;
 use std::fmt;
 use time::{Date, Duration, Month, OffsetDateTime, Time, UtcOffset, Weekday};
 
@@ -40,6 +41,35 @@ impl fmt::Display for EvalError {
 
 impl std::error::Error for EvalError {}
 
+#[derive(Debug, Clone, Default)]
+pub struct Calendar {
+    holidays: HashSet<Date>,
+}
+
+impl Calendar {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn add_holiday(&mut self, date: Date) {
+        self.holidays.insert(date);
+    }
+
+    pub fn extend(&mut self, other: &Calendar) {
+        self.holidays.extend(other.holidays.iter().copied());
+    }
+
+    pub fn add_holiday_ymd(&mut self, year: u32, month: u8, day: u8) -> Result<(), EvalError> {
+        self.add_holiday(date_from_parts(year, month, day)?);
+        Ok(())
+    }
+
+    fn is_working_day(&self, date: Date) -> bool {
+        !self.holidays.contains(&date)
+            && !matches!(date.weekday(), Weekday::Saturday | Weekday::Sunday)
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub enum Value {
     Date(Date),
@@ -51,15 +81,7 @@ pub enum Value {
 
 impl Value {
     fn from_date(year: u32, month: u8, day: u8) -> Result<Self, EvalError> {
-        let month = Month::try_from(month).map_err(|_| EvalError::InvalidMonth(month))?;
-        let date = Date::from_calendar_date(
-            year.try_into()
-                .map_err(|_| EvalError::InvalidDate(year, month.into(), day))?,
-            month,
-            day,
-        )
-        .map_err(|_| EvalError::InvalidDate(year, month.into(), day))?;
-        Ok(Value::Date(date))
+        Ok(Value::Date(date_from_parts(year, month, day)?))
     }
 
     fn from_time(hour: u8, minute: u8, second: u8) -> Result<Self, EvalError> {
@@ -120,16 +142,16 @@ impl Value {
         )))
     }
 
-    fn add(self, other: Value) -> Result<Value, EvalError> {
+    fn add(self, other: Value, calendar: &Calendar) -> Result<Value, EvalError> {
         match (self, other) {
             (Value::Date(left), Value::Duration(right)) => Ok(Value::Date(left + right)),
             (Value::Date(left), Value::WorkingDays(right)) => {
-                Ok(Value::Date(add_working_days(left, right)))
+                Ok(Value::Date(add_working_days(left, right, calendar)))
             }
             (Value::DateTime(left), Value::Duration(right)) => Ok(Value::DateTime(left + right)),
-            (Value::DateTime(left), Value::WorkingDays(right)) => {
-                Ok(Value::DateTime(add_datetime_working_days(left, right)))
-            }
+            (Value::DateTime(left), Value::WorkingDays(right)) => Ok(Value::DateTime(
+                add_datetime_working_days(left, right, calendar),
+            )),
             (Value::Time(left), Value::Duration(right)) => Ok(Value::Time(left + right)),
             (Value::Duration(left), Value::Duration(right)) => Ok(Value::Duration(left + right)),
             (Value::WorkingDays(left), Value::WorkingDays(right)) => {
@@ -139,21 +161,21 @@ impl Value {
         }
     }
 
-    fn sub(self, other: Value) -> Result<Value, EvalError> {
+    fn sub(self, other: Value, calendar: &Calendar) -> Result<Value, EvalError> {
         match (self, other) {
             (Value::Date(left), Value::Date(right)) => Ok(Value::Duration(left - right)),
             (Value::Date(left), Value::Duration(right)) => Ok(Value::Date(left - right)),
             (Value::Date(left), Value::WorkingDays(right)) => {
-                Ok(Value::Date(add_working_days(left, -right)))
+                Ok(Value::Date(add_working_days(left, -right, calendar)))
             }
             (Value::Duration(left), Value::Duration(right)) => Ok(Value::Duration(left - right)),
             (Value::WorkingDays(left), Value::WorkingDays(right)) => {
                 Ok(Value::WorkingDays(left - right))
             }
             (Value::DateTime(left), Value::Duration(right)) => Ok(Value::DateTime(left - right)),
-            (Value::DateTime(left), Value::WorkingDays(right)) => {
-                Ok(Value::DateTime(add_datetime_working_days(left, -right)))
-            }
+            (Value::DateTime(left), Value::WorkingDays(right)) => Ok(Value::DateTime(
+                add_datetime_working_days(left, -right, calendar),
+            )),
             (Value::Time(left), Value::Duration(right)) => Ok(Value::Time(left - right)),
             (Value::Time(left), Value::Time(right)) => Ok(Value::Duration(left - right)),
             _ => Err(EvalError::InvalidOp(Op::Sub, self, other)),
@@ -169,6 +191,17 @@ impl Value {
             Value::Time(_) => "Time",
         }
     }
+}
+
+fn date_from_parts(year: u32, month: u8, day: u8) -> Result<Date, EvalError> {
+    let month = Month::try_from(month).map_err(|_| EvalError::InvalidMonth(month))?;
+    Date::from_calendar_date(
+        year.try_into()
+            .map_err(|_| EvalError::InvalidDate(year, month.into(), day))?,
+        month,
+        day,
+    )
+    .map_err(|_| EvalError::InvalidDate(year, month.into(), day))
 }
 
 impl fmt::Display for Value {
@@ -245,19 +278,23 @@ fn format_offset(offset: UtcOffset) -> String {
     }
 }
 
-fn add_datetime_working_days(datetime: OffsetDateTime, days: i64) -> OffsetDateTime {
-    let date = add_working_days(datetime.date(), days);
+fn add_datetime_working_days(
+    datetime: OffsetDateTime,
+    days: i64,
+    calendar: &Calendar,
+) -> OffsetDateTime {
+    let date = add_working_days(datetime.date(), days, calendar);
     OffsetDateTime::new_in_offset(date, datetime.time(), datetime.offset())
 }
 
-fn add_working_days(mut date: Date, days: i64) -> Date {
+fn add_working_days(mut date: Date, days: i64, calendar: &Calendar) -> Date {
     let step = if days >= 0 { 1 } else { -1 };
     let mut remaining = days.abs();
 
     while remaining > 0 {
         date += Duration::days(step);
 
-        if is_working_day(date) {
+        if calendar.is_working_day(date) {
             remaining -= 1;
         }
     }
@@ -265,19 +302,19 @@ fn add_working_days(mut date: Date, days: i64) -> Date {
     date
 }
 
-fn is_working_day(date: Date) -> bool {
-    !matches!(date.weekday(), Weekday::Saturday | Weekday::Sunday)
+pub fn eval(expr: &Expr) -> Result<Value, EvalError> {
+    eval_with_calendar(expr, &Calendar::default())
 }
 
-pub fn eval(expr: &Expr) -> Result<Value, EvalError> {
+pub fn eval_with_calendar(expr: &Expr, calendar: &Calendar) -> Result<Value, EvalError> {
     match expr {
         Expr::BinOp(left, op, right) => {
-            let left = eval(left)?;
-            let right = eval(right)?;
+            let left = eval_with_calendar(left, calendar)?;
+            let right = eval_with_calendar(right, calendar)?;
 
             match op {
-                Op::Add => left.add(right),
-                Op::Sub => left.sub(right),
+                Op::Add => left.add(right, calendar),
+                Op::Sub => left.sub(right, calendar),
             }
         }
         Expr::Time(hour, minute) => Ok(Value::from_time(*hour, *minute, 0)?),
@@ -384,6 +421,28 @@ mod tests {
             Value::Date(date) => assert_eq!(
                 date,
                 Date::from_calendar_date(2024, Month::June, 21).unwrap()
+            ),
+            _ => panic!("Expected Value::Date"),
+        }
+    }
+
+    #[test]
+    fn test_add_date_working_days_skips_holiday() {
+        let expr = Expr::BinOp(
+            Box::new(Expr::Date(2024, 4, 26)),
+            Op::Add,
+            Box::new(Expr::Duration(1, Unit::WorkingDays)),
+        );
+        let mut calendar = Calendar::new();
+        calendar
+            .add_holiday_ymd(2024, 4, 29)
+            .expect("valid holiday");
+
+        let val = eval_with_calendar(&expr, &calendar).unwrap();
+        match val {
+            Value::Date(date) => assert_eq!(
+                date,
+                Date::from_calendar_date(2024, Month::April, 30).unwrap()
             ),
             _ => panic!("Expected Value::Date"),
         }

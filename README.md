@@ -12,7 +12,25 @@ Try it [online](https://domenicocinque.github.io/tcalc/).
 
 ## Usage
 
-Run without installing: `cargo run -p cli -- "2am + 30m"`
+Run without installing: `cargo run -p tcalc-cli -- "2am + 30m"`
+
+Add holidays to working-day calculations with repeated `--holiday` flags:
+`cargo run -p tcalc-cli -- --holiday 2024/04/29 "2024/04/26 + 1wd"`
+
+Or pass a TOML calendar file:
+`cargo run -p tcalc-cli -- --calendar holidays.toml "2024/04/26 + 1wd"`
+
+```toml
+holidays = ["2024/04/29"]
+```
+
+Named calendars are selected with `--calendar-name`:
+`cargo run -p tcalc-cli -- --calendar holidays.toml --calendar-name italy "2024/04/26 + 1wd"`
+
+```toml
+[italy]
+holidays = ["2024/04/25", "2024/04/29"]
+```
 
 ### Syntax
 
@@ -20,5 +38,5 @@ Run without installing: `cargo run -p cli -- "2am + 30m"`
 * Times accept 24-hour `HH:MM` or `H[am|pm]` forms (`2pm` → 14:00).
 * Keywords: `today`, `tomorrow`, `yesterday`, `now`.
 * Durations combine a number with a unit: `y`, `year`, `month`, `day|d`, `workingday|workday|wd`, `hour|h`, `minute|m`, `second|s`.
-* Working days skip Saturdays and Sundays.
+* Working days skip Saturdays, Sundays, holidays passed with `--holiday`, and holidays loaded from `--calendar`.
 * Combine values with `+` and `-`, chaining operations left-to-right (`today - 2h + 30m`).

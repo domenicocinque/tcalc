@@ -67,7 +67,7 @@ proptest! {
     ) {
         let input = format!("{year}/{month}/{day} + {days}d - {days}d");
         let expected = date(year, month, day).to_string();
-        prop_assert_eq!(run(&input).unwrap(), expected);
+        prop_assert_eq!(run(&input, None).unwrap(), expected);
     }
 
     #[test]
@@ -81,7 +81,7 @@ proptest! {
         let expected = add_working_days(start, days).to_string();
         let input = format!("{year}/{month}/{day} + {days}wd");
 
-        prop_assert_eq!(run(&input).unwrap(), expected);
+        prop_assert_eq!(run(&input, None).unwrap(), expected);
     }
 
     #[test]
@@ -95,6 +95,6 @@ proptest! {
         let expected = add_working_days(start, -days).to_string();
         let input = format!("{year}/{month}/{day} - {days}wd");
 
-        prop_assert_eq!(run(&input).unwrap(), expected);
+        prop_assert_eq!(run(&input, None).unwrap(), expected);
     }
 }
