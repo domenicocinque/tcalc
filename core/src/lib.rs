@@ -1,3 +1,4 @@
+mod calendar;
 mod evaluator;
 mod lexer;
 mod parser;
@@ -7,7 +8,7 @@ use crate::lexer::Lexer;
 use crate::parser::{Expr, parse};
 use toml::Value;
 
-pub use crate::evaluator::Calendar;
+pub use crate::calendar::Calendar;
 
 pub fn run(input: &str, calendar: Option<&Calendar>) -> Result<String, String> {
     let default_calendar = Calendar::default();
