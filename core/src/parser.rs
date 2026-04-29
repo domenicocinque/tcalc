@@ -75,6 +75,8 @@ pub enum ParsingError {
     ExpectedColon,
     ExpectedUnit,
     InvalidYear(i64),
+    InvalidMonth(i64),
+    InvalidDay(i64),
     InvalidTime(String),
 }
 
@@ -91,6 +93,8 @@ impl std::fmt::Display for ParsingError {
             ParsingError::ExpectedColon => write!(f, "expected colon"),
             ParsingError::ExpectedUnit => write!(f, "expected unit"),
             ParsingError::InvalidYear(year) => write!(f, "invalid year '{}'", year),
+            ParsingError::InvalidMonth(month) => write!(f, "invalid month '{}'", month),
+            ParsingError::InvalidDay(day) => write!(f, "invalid day '{}'", day),
             ParsingError::InvalidTime(time_string) => write!(f, "invalid time '{}'", time_string),
         }
     }
@@ -186,26 +190,28 @@ fn parse_date(tokens: &mut Peekable<Lexer>, year: i64) -> Result<Expr, ParsingEr
     expect_token(tokens, Token::Slash, ParsingError::ExpectedSlash)?;
     let day = expect_number(tokens)?;
 
+    let year = parse_year(year)?;
+    let month = parse_month(month)?;
+    let day = parse_day(day)?;
+
     if let Some(Token::Number(_)) = tokens.peek() {
         let hour = expect_number(tokens)?;
         expect_token(tokens, Token::Colon, ParsingError::ExpectedColon)?;
         let minute = expect_number(tokens)?;
+        let (hour, minute) = parse_time_parts(hour, minute)?;
         Ok(Expr::DateTime(
-            year as u32,
-            month as u8,
-            day as u8,
-            hour as u8,
-            minute as u8,
+            year, month, day, hour, minute,
         ))
     } else {
-        Ok(Expr::Date(year as u32, month as u8, day as u8))
+        Ok(Expr::Date(year, month, day))
     }
 }
 
 fn parse_time(tokens: &mut Peekable<Lexer>, hour: i64) -> Result<Expr, ParsingError> {
     expect_token(tokens, Token::Colon, ParsingError::ExpectedColon)?;
     let minute = expect_number(tokens)?;
-    Ok(Expr::Time(hour as u8, minute as u8))
+    let (hour, minute) = parse_time_parts(hour, minute)?;
+    Ok(Expr::Time(hour, minute))
 }
 
 fn parse_duration(tokens: &mut Peekable<Lexer>, value: i64) -> Result<Expr, ParsingError> {
@@ -234,6 +240,31 @@ fn expect_number(tokens: &mut Peekable<Lexer>) -> Result<i64, ParsingError> {
     }
 }
 
+fn parse_year(year: i64) -> Result<u32, ParsingError> {
+    u32::try_from(year).map_err(|_| ParsingError::InvalidYear(year))
+}
+
+fn parse_month(month: i64) -> Result<u8, ParsingError> {
+    match month {
+        1..=12 => Ok(month as u8),
+        _ => Err(ParsingError::InvalidMonth(month)),
+    }
+}
+
+fn parse_day(day: i64) -> Result<u8, ParsingError> {
+    match day {
+        1..=31 => Ok(day as u8),
+        _ => Err(ParsingError::InvalidDay(day)),
+    }
+}
+
+fn parse_time_parts(hour: i64, minute: i64) -> Result<(u8, u8), ParsingError> {
+    match (hour, minute) {
+        (0..=23, 0..=59) => Ok((hour as u8, minute as u8)),
+        _ => Err(ParsingError::InvalidTime(format!("{hour}:{minute}"))),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -246,10 +277,40 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_date_rejects_year_overflow() {
+        let lexer = Lexer::new("999999999999/01/01");
+        assert!(parse(lexer).is_err());
+    }
+
+    #[test]
+    fn test_parse_date_rejects_month_overflow() {
+        let lexer = Lexer::new("2023/257/01");
+        assert!(parse(lexer).is_err());
+    }
+
+    #[test]
+    fn test_parse_date_rejects_day_overflow() {
+        let lexer = Lexer::new("2023/01/257");
+        assert!(parse(lexer).is_err());
+    }
+
+    #[test]
     fn test_parse_time_24h() {
         let lexer = Lexer::new("14:30");
         let expr = parse(lexer).unwrap();
         assert_eq!(expr, Expr::Time(14, 30));
+    }
+
+    #[test]
+    fn test_parse_time_rejects_24h_overflow() {
+        let lexer = Lexer::new("257:00");
+        assert!(parse(lexer).is_err());
+    }
+
+    #[test]
+    fn test_parse_time_rejects_minute_overflow() {
+        let lexer = Lexer::new("14:257");
+        assert!(parse(lexer).is_err());
     }
 
     #[test]
