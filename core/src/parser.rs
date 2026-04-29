@@ -172,17 +172,17 @@ fn parse_number(tokens: &mut Peekable<Lexer>) -> Result<Expr, ParsingError> {
             "am" => {
                 tokens.next();
                 match first_num {
-                    1..=11 => return Ok(Expr::Time(first_num as u8, 0)),
-                    12 => return Ok(Expr::Time(0, 0)),
-                    _ => return Err(ParsingError::InvalidTime(format!("{first_num} am"))),
+                    1..=11 => Ok(Expr::Time(first_num as u8, 0)),
+                    12 => Ok(Expr::Time(0, 0)),
+                    _ => Err(ParsingError::InvalidTime(format!("{first_num} am"))),
                 }
             }
             "pm" => {
                 tokens.next();
                 match first_num {
-                    1..=11 => return Ok(Expr::Time((first_num + HOURS_IN_HALF_DAY) as u8, 0)),
-                    12 => return Ok(Expr::Time(12, 0)),
-                    _ => return Err(ParsingError::InvalidTime(format!("{first_num} pm"))),
+                    1..=11 => Ok(Expr::Time((first_num + HOURS_IN_HALF_DAY) as u8, 0)),
+                    12 => Ok(Expr::Time(12, 0)),
+                    _ => Err(ParsingError::InvalidTime(format!("{first_num} pm"))),
                 }
             }
             _ => parse_duration(tokens, first_num),

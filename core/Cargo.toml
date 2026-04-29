@@ -10,3 +10,6 @@ readme = "../README.md"
 [dependencies]
 time = { version = "0.3", features = ["wasm-bindgen"] }
 unscanny = "0.1.0"
+
+[dev-dependencies]
+proptest = { version = "1", default-features = false, features = ["std"] }

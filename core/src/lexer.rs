@@ -40,7 +40,7 @@ impl<'a> Lexer<'a> {
     }
 
     pub fn next_token(&mut self) -> Token {
-        let token = match self.s.eat() {
+        match self.s.eat() {
             Some('+') => Token::Plus,
             Some('-') => Token::Minus,
             Some(':') => Token::Colon,
@@ -50,9 +50,7 @@ impl<'a> Lexer<'a> {
             Some('a'..='z') | Some('A'..='Z') => self.ident(),
             None => Token::Eof,
             _ => Token::Illegal,
-        };
-
-        token
+        }
     }
 
     fn whitespace(&mut self) -> Token {
