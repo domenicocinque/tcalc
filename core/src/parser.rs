@@ -69,7 +69,6 @@ impl TryFrom<&str> for Unit {
 pub enum ParsingError {
     UnexpectedToken(Token),
     UnknownKeyword(String),
-    UnexpectedIdent(String),
     UnexpectedEof,
     ExpectedIdent,
     ExpectedNumber,
@@ -87,7 +86,6 @@ impl std::fmt::Display for ParsingError {
         match self {
             ParsingError::UnexpectedToken(token) => write!(f, "unexpected token '{}'", token),
             ParsingError::UnknownKeyword(keyword) => write!(f, "unknown keyword '{}'", keyword),
-            ParsingError::UnexpectedIdent(ident) => write!(f, "unexpected identifier '{}'", ident),
             ParsingError::UnexpectedEof => write!(f, "unexpected end of input"),
             ParsingError::ExpectedIdent => write!(f, "expected identifier"),
             ParsingError::ExpectedNumber => write!(f, "expected number"),

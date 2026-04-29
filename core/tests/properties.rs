@@ -1,6 +1,4 @@
 use proptest::prelude::*;
-use tcalc_core::lexer::Lexer;
-use tcalc_core::parser::parse;
 use tcalc_core::run;
 use time::{Date, Duration, Month, Weekday};
 
@@ -35,7 +33,7 @@ proptest! {
         day in 1i64..=28,
     ) {
         let input = format!("{year}/{month}/{day}");
-        prop_assert!(parse(Lexer::new(&input)).is_err());
+        prop_assert!(run(&input, None).is_err());
     }
 
     #[test]
@@ -44,7 +42,7 @@ proptest! {
         minute in 0i64..=59,
     ) {
         let input = format!("{hour}:{minute}");
-        prop_assert!(parse(Lexer::new(&input)).is_err());
+        prop_assert!(run(&input, None).is_err());
     }
 
     #[test]
@@ -55,7 +53,7 @@ proptest! {
         suffix in "[a-zA-Z]{1,12}",
     ) {
         let input = format!("{year}/{month}/{day}{suffix}");
-        prop_assert!(parse(Lexer::new(&input)).is_err());
+        prop_assert!(run(&input, None).is_err());
     }
 
     #[test]

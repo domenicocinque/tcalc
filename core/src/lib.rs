@@ -1,6 +1,6 @@
-pub mod evaluator;
-pub mod lexer;
-pub mod parser;
+mod evaluator;
+mod lexer;
+mod parser;
 
 use crate::evaluator::eval_with_calendar;
 use crate::lexer::Lexer;

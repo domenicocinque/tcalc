@@ -10,23 +10,23 @@ const DAYS_PER_YEAR_APPROX: i64 = 365;
 
 #[derive(Debug)]
 pub enum EvalError {
-    InvalidDate(u32, u8, u8),
-    InvalidMonth(u8),
-    InvalidTime(u8, u8, u8),
-    InvalidOp(Op, Value, Value),
+    Date(u32, u8, u8),
+    Month(u8),
+    Time(u8, u8, u8),
+    Operation(Op, Value, Value),
 }
 
 impl fmt::Display for EvalError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            EvalError::InvalidDate(year, month, day) => {
+            EvalError::Date(year, month, day) => {
                 write!(f, "invalid date '{}-{}-{}'", year, month, day)
             }
-            EvalError::InvalidMonth(month) => write!(f, "invalid month '{}'", month),
-            EvalError::InvalidTime(hour, minute, second) => {
+            EvalError::Month(month) => write!(f, "invalid month '{}'", month),
+            EvalError::Time(hour, minute, second) => {
                 write!(f, "invalid time '{}:{}:{}'", hour, minute, second)
             }
-            EvalError::InvalidOp(op, left, right) => {
+            EvalError::Operation(op, left, right) => {
                 write!(
                     f,
                     "invalid operation '{}' for '{}' and '{}'",
@@ -86,7 +86,7 @@ impl Value {
 
     fn from_time(hour: u8, minute: u8, second: u8) -> Result<Self, EvalError> {
         let time = Time::from_hms(hour, minute, second)
-            .map_err(|_| EvalError::InvalidTime(hour, minute, second))?;
+            .map_err(|_| EvalError::Time(hour, minute, second))?;
         Ok(Value::Time(time))
     }
 
@@ -131,11 +131,10 @@ impl Value {
         hour: u8,
         minute: u8,
     ) -> Result<Self, EvalError> {
-        let month = Month::try_from(month).map_err(|_| EvalError::InvalidMonth(month))?;
+        let month = Month::try_from(month).map_err(|_| EvalError::Month(month))?;
         let date = Date::from_calendar_date(year as i32, month, day)
-            .map_err(|_| EvalError::InvalidDate(year, month.into(), day))?;
-        let time =
-            Time::from_hms(hour, minute, 0).map_err(|_| EvalError::InvalidTime(hour, minute, 0))?;
+            .map_err(|_| EvalError::Date(year, month.into(), day))?;
+        let time = Time::from_hms(hour, minute, 0).map_err(|_| EvalError::Time(hour, minute, 0))?;
         let offset = UtcOffset::UTC;
         Ok(Value::DateTime(OffsetDateTime::new_in_offset(
             date, time, offset,
@@ -157,7 +156,7 @@ impl Value {
             (Value::WorkingDays(left), Value::WorkingDays(right)) => {
                 Ok(Value::WorkingDays(left + right))
             }
-            _ => Err(EvalError::InvalidOp(Op::Add, self, other)),
+            _ => Err(EvalError::Operation(Op::Add, self, other)),
         }
     }
 
@@ -178,7 +177,7 @@ impl Value {
             )),
             (Value::Time(left), Value::Duration(right)) => Ok(Value::Time(left - right)),
             (Value::Time(left), Value::Time(right)) => Ok(Value::Duration(left - right)),
-            _ => Err(EvalError::InvalidOp(Op::Sub, self, other)),
+            _ => Err(EvalError::Operation(Op::Sub, self, other)),
         }
     }
 
@@ -194,14 +193,14 @@ impl Value {
 }
 
 fn date_from_parts(year: u32, month: u8, day: u8) -> Result<Date, EvalError> {
-    let month = Month::try_from(month).map_err(|_| EvalError::InvalidMonth(month))?;
+    let month = Month::try_from(month).map_err(|_| EvalError::Month(month))?;
     Date::from_calendar_date(
         year.try_into()
-            .map_err(|_| EvalError::InvalidDate(year, month.into(), day))?,
+            .map_err(|_| EvalError::Date(year, month.into(), day))?,
         month,
         day,
     )
-    .map_err(|_| EvalError::InvalidDate(year, month.into(), day))
+    .map_err(|_| EvalError::Date(year, month.into(), day))
 }
 
 impl fmt::Display for Value {
@@ -302,7 +301,8 @@ fn add_working_days(mut date: Date, days: i64, calendar: &Calendar) -> Date {
     date
 }
 
-pub fn eval(expr: &Expr) -> Result<Value, EvalError> {
+#[cfg(test)]
+fn eval(expr: &Expr) -> Result<Value, EvalError> {
     eval_with_calendar(expr, &Calendar::default())
 }
 
