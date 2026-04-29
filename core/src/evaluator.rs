@@ -2,7 +2,7 @@ use crate::parser::{Expr, Op};
 use crate::parser::{Keyword, Unit};
 
 use std::fmt;
-use time::{Date, Duration, Month, OffsetDateTime, Time, UtcOffset};
+use time::{Date, Duration, Month, OffsetDateTime, Time, UtcOffset, Weekday};
 
 const DAYS_PER_MONTH_APPROX: i64 = 30;
 const DAYS_PER_YEAR_APPROX: i64 = 365;
@@ -45,6 +45,7 @@ pub enum Value {
     Date(Date),
     DateTime(OffsetDateTime),
     Duration(Duration),
+    WorkingDays(i64),
     Time(Time),
 }
 
@@ -72,6 +73,7 @@ impl Value {
             Unit::Years => Duration::days(value * DAYS_PER_YEAR_APPROX),
             Unit::Months => Duration::days(value * DAYS_PER_MONTH_APPROX),
             Unit::Days => Duration::days(value),
+            Unit::WorkingDays => return Ok(Value::WorkingDays(value)),
             Unit::Hours => Duration::hours(value),
             Unit::Minutes => Duration::minutes(value),
             Unit::Seconds => Duration::seconds(value),
@@ -121,9 +123,18 @@ impl Value {
     fn add(self, other: Value) -> Result<Value, EvalError> {
         match (self, other) {
             (Value::Date(left), Value::Duration(right)) => Ok(Value::Date(left + right)),
+            (Value::Date(left), Value::WorkingDays(right)) => {
+                Ok(Value::Date(add_working_days(left, right)))
+            }
             (Value::DateTime(left), Value::Duration(right)) => Ok(Value::DateTime(left + right)),
+            (Value::DateTime(left), Value::WorkingDays(right)) => {
+                Ok(Value::DateTime(add_datetime_working_days(left, right)))
+            }
             (Value::Time(left), Value::Duration(right)) => Ok(Value::Time(left + right)),
             (Value::Duration(left), Value::Duration(right)) => Ok(Value::Duration(left + right)),
+            (Value::WorkingDays(left), Value::WorkingDays(right)) => {
+                Ok(Value::WorkingDays(left + right))
+            }
             _ => Err(EvalError::InvalidOp(Op::Add, self, other)),
         }
     }
@@ -132,8 +143,17 @@ impl Value {
         match (self, other) {
             (Value::Date(left), Value::Date(right)) => Ok(Value::Duration(left - right)),
             (Value::Date(left), Value::Duration(right)) => Ok(Value::Date(left - right)),
+            (Value::Date(left), Value::WorkingDays(right)) => {
+                Ok(Value::Date(add_working_days(left, -right)))
+            }
             (Value::Duration(left), Value::Duration(right)) => Ok(Value::Duration(left - right)),
+            (Value::WorkingDays(left), Value::WorkingDays(right)) => {
+                Ok(Value::WorkingDays(left - right))
+            }
             (Value::DateTime(left), Value::Duration(right)) => Ok(Value::DateTime(left - right)),
+            (Value::DateTime(left), Value::WorkingDays(right)) => {
+                Ok(Value::DateTime(add_datetime_working_days(left, -right)))
+            }
             (Value::Time(left), Value::Duration(right)) => Ok(Value::Time(left - right)),
             (Value::Time(left), Value::Time(right)) => Ok(Value::Duration(left - right)),
             _ => Err(EvalError::InvalidOp(Op::Sub, self, other)),
@@ -145,6 +165,7 @@ impl Value {
             Value::Date(_) => "Date",
             Value::DateTime(_) => "DateTime",
             Value::Duration(_) => "Duration",
+            Value::WorkingDays(_) => "WorkingDays",
             Value::Time(_) => "Time",
         }
     }
@@ -156,6 +177,7 @@ impl fmt::Display for Value {
             Value::Date(d) => write_date(f, *d),
             Value::DateTime(dt) => write_datetime(f, *dt),
             Value::Duration(dur) => dur.fmt(f),
+            Value::WorkingDays(days) => write!(f, "{days}wd"),
             Value::Time(t) => write_time(f, *t),
         }
     }
@@ -223,6 +245,30 @@ fn format_offset(offset: UtcOffset) -> String {
     }
 }
 
+fn add_datetime_working_days(datetime: OffsetDateTime, days: i64) -> OffsetDateTime {
+    let date = add_working_days(datetime.date(), days);
+    OffsetDateTime::new_in_offset(date, datetime.time(), datetime.offset())
+}
+
+fn add_working_days(mut date: Date, days: i64) -> Date {
+    let step = if days >= 0 { 1 } else { -1 };
+    let mut remaining = days.abs();
+
+    while remaining > 0 {
+        date += Duration::days(step);
+
+        if is_working_day(date) {
+            remaining -= 1;
+        }
+    }
+
+    date
+}
+
+fn is_working_day(date: Date) -> bool {
+    !matches!(date.weekday(), Weekday::Saturday | Weekday::Sunday)
+}
+
 pub fn eval(expr: &Expr) -> Result<Value, EvalError> {
     match expr {
         Expr::BinOp(left, op, right) => {
@@ -283,6 +329,16 @@ mod tests {
     }
 
     #[test]
+    fn test_duration_working_days() {
+        let expr = Expr::Duration(3, Unit::WorkingDays);
+        let val = eval(&expr).unwrap();
+        match val {
+            Value::WorkingDays(days) => assert_eq!(days, 3),
+            _ => panic!("Expected Value::WorkingDays"),
+        }
+    }
+
+    #[test]
     fn test_add_date_duration() {
         let expr = Expr::BinOp(
             Box::new(Expr::Date(2025, 9, 27)),
@@ -294,6 +350,40 @@ mod tests {
             Value::Date(date) => assert_eq!(
                 date,
                 Date::from_calendar_date(2025, Month::September, 29).unwrap()
+            ),
+            _ => panic!("Expected Value::Date"),
+        }
+    }
+
+    #[test]
+    fn test_add_date_working_days_skips_weekend_start() {
+        let expr = Expr::BinOp(
+            Box::new(Expr::Date(2024, 4, 27)),
+            Op::Add,
+            Box::new(Expr::Duration(1, Unit::WorkingDays)),
+        );
+        let val = eval(&expr).unwrap();
+        match val {
+            Value::Date(date) => assert_eq!(
+                date,
+                Date::from_calendar_date(2024, Month::April, 29).unwrap()
+            ),
+            _ => panic!("Expected Value::Date"),
+        }
+    }
+
+    #[test]
+    fn test_add_date_working_days() {
+        let expr = Expr::BinOp(
+            Box::new(Expr::Date(2024, 4, 27)),
+            Op::Add,
+            Box::new(Expr::Duration(40, Unit::WorkingDays)),
+        );
+        let val = eval(&expr).unwrap();
+        match val {
+            Value::Date(date) => assert_eq!(
+                date,
+                Date::from_calendar_date(2024, Month::June, 21).unwrap()
             ),
             _ => panic!("Expected Value::Date"),
         }
@@ -317,8 +407,49 @@ mod tests {
     }
 
     #[test]
+    fn test_sub_date_working_days_skips_weekend_start() {
+        let expr = Expr::BinOp(
+            Box::new(Expr::Date(2024, 4, 27)),
+            Op::Sub,
+            Box::new(Expr::Duration(1, Unit::WorkingDays)),
+        );
+        let val = eval(&expr).unwrap();
+        match val {
+            Value::Date(date) => assert_eq!(
+                date,
+                Date::from_calendar_date(2024, Month::April, 26).unwrap()
+            ),
+            _ => panic!("Expected Value::Date"),
+        }
+    }
+
+    #[test]
+    fn test_add_datetime_working_days_preserves_time() {
+        let expr = Expr::BinOp(
+            Box::new(Expr::DateTime(2024, 4, 27, 14, 30)),
+            Op::Add,
+            Box::new(Expr::Duration(1, Unit::WorkingDays)),
+        );
+        let val = eval(&expr).unwrap();
+        match val {
+            Value::DateTime(datetime) => {
+                assert_eq!(
+                    datetime.date(),
+                    Date::from_calendar_date(2024, Month::April, 29).unwrap()
+                );
+                assert_eq!(datetime.time(), Time::from_hms(14, 30, 0).unwrap());
+            }
+            _ => panic!("Expected Value::DateTime"),
+        }
+    }
+
+    #[test]
     fn test_sub_time_time() {
-        let expr = Expr::BinOp(Box::new(Expr::Time(18, 0)), Op::Sub, Box::new(Expr::Time(9,0)));
+        let expr = Expr::BinOp(
+            Box::new(Expr::Time(18, 0)),
+            Op::Sub,
+            Box::new(Expr::Time(9, 0)),
+        );
         let val = eval(&expr).unwrap();
 
         match val {

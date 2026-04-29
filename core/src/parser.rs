@@ -42,6 +42,7 @@ pub enum Unit {
     Years,
     Months,
     Days,
+    WorkingDays,
     Hours,
     Minutes,
     Seconds,
@@ -55,6 +56,7 @@ impl TryFrom<&str> for Unit {
             "years" | "year" | "y" => Ok(Unit::Years),
             "months" | "month" => Ok(Unit::Months),
             "days" | "day" | "d" => Ok(Unit::Days),
+            "workingdays" | "workingday" | "workdays" | "workday" | "wd" => Ok(Unit::WorkingDays),
             "hours" | "hour" | "h" => Ok(Unit::Hours),
             "minutes" | "minute" | "m" => Ok(Unit::Minutes),
             "seconds" | "second" | "s" => Ok(Unit::Seconds),
@@ -205,9 +207,7 @@ fn parse_date(tokens: &mut Peekable<Lexer>, year: i64) -> Result<Expr, ParsingEr
         expect_token(tokens, Token::Colon, ParsingError::ExpectedColon)?;
         let minute = expect_number(tokens)?;
         let (hour, minute) = parse_time_parts(hour, minute)?;
-        Ok(Expr::DateTime(
-            year, month, day, hour, minute,
-        ))
+        Ok(Expr::DateTime(year, month, day, hour, minute))
     } else {
         Ok(Expr::Date(year, month, day))
     }
@@ -383,6 +383,13 @@ mod tests {
         let lexer = Lexer::new("30m");
         let expr = parse(lexer).unwrap();
         assert_eq!(expr, Expr::Duration(30, Unit::Minutes));
+    }
+
+    #[test]
+    fn test_parse_duration_working_days() {
+        let lexer = Lexer::new("40wd");
+        let expr = parse(lexer).unwrap();
+        assert_eq!(expr, Expr::Duration(40, Unit::WorkingDays));
     }
 
     #[test]
